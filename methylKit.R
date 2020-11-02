@@ -1,5 +1,6 @@
 # 2020.10.29 after meeting with Lisa
-
+# 2020.11.01 trying to sort by chr (V1) then feed into methRead but not working
+# line 33 onwards
 library(methylKit)
 # read in rr05
 rr05 <- read.table("~/Desktop/THESIS/nomismatch.rr05.cov")
@@ -28,4 +29,14 @@ filtered.myobj=filterByCoverage(myobj,lo.count=10,lo.perc=NULL,
 # again display graphs for methylation distribution and per base coverage
 getMethylationStats(filtered.myobj[[1]],plot=TRUE,both.strands=FALSE)
 getCoverageStats(filtered.myobj[[1]],plot=TRUE,both.strands=FALSE)
+
+# TRYING TO SORT
+# file.list_sort=list(rr05_sort)
+# # however methRead for this doesn't work (job doesn't finish and R crash)
+# myobj_sort=methRead(file.list_sort,
+#                sample.id=list("rr05_sort"),
+#                pipeline = "bismarkCoverage",
+#                header = FALSE,
+#                assembly="GRCm38",treatment=1)
+
 
