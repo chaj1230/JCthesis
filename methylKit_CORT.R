@@ -1,5 +1,7 @@
+# working, most updated code with methylKit_CRS
+# later make a function with it and run it for CORT vs VEHICLE, CRS vs CORT
+
 library(methylKit)
-######## read in rr05 .cov file ########
 
 # cort.list has rr01-rr05 CORT and rr06-rr10 VEHICLE
 cort.list=list("~/Desktop/THESIS/covs/G695_rr01_S15_val_1_bismark_bt2_pe.bismark.cov",
@@ -29,18 +31,55 @@ getCoverageStats(cort[[1]],plot=TRUE,both.strands=FALSE)
 
 
 
-
-
 # (2.5) filter away low coverage
 # discards bases that have coverage below 10X 
 # also discards bases with > 99.9th percentile of coverage in each sample
-filtered.myobj=filterByCoverage(myobj,lo.count=10,lo.perc=NULL,
+cort.filtered=filterByCoverage(cort,lo.count=10,lo.perc=NULL,
                                 hi.count=NULL,hi.perc=99.9)
 
-getMethylationStats(filtered.myobj[[1]],plot=TRUE,both.strands=FALSE)
+getMethylationStats(cort.filtered[[1]],plot=TRUE,both.strands=FALSE)
 
-getCoverageStats(filtered.myobj[[1]],plot=TRUE,both.strands=FALSE)
+getCoverageStats(cort.filtered,plot=TRUE,both.strands=FALSE)
 
+
+
+############ COMPARATIVE ANALYSIS ############ 
+# merge samples to ensure all bases covered
+# merge all samples to one object for base-pair locations that are covered in all samples
+
+# create methylBase obj with bases/regions covered in ALL samples
+cort_unite=unite(cort, destrand=FALSE)
+# relax: create methylBase obj with CpGs covered in AT LEAST ONE 1 sample per group
+cort_unite.min=unite(cort, min.per.group=1L)
+
+# same thing for filtered:
+cort.filtered_unite=unite(cort.filtered, destrand=FALSE)
+cort.filtered_unite.min=unite(cort.filtered,min.per.group=1L)
+
+
+### sample correlation
+getCorrelation(cort_unite,plot=TRUE)
+
+### cluster
+clusterSamples(cort_unite, dist="correlation", method="ward", plot=TRUE)
+clusterSamples(cort_unite.min, dist="correlation", method="ward", plot=TRUE)
+
+clusterSamples(cort.filtered_unite, dist="correlation", method="ward", plot=TRUE)
+clusterSamples(cort.filtered_unite.min, dist="correlation", method="ward", plot=TRUE)
+
+PCASamples(cort_unite)
+PCASamples(cort.filtered_unite)
+
+PCASamples(cort_unite, screeplot=TRUE)
+
+
+#################### Find DMRs (3.6) ####################
+
+# tests for differential methylation using logistic regression
+## (calculateDiffMeth takes long time)
+myDiff=calculateDiffMeth(cort_unite) # 15 warnings: glm.fit: fitted probabilities numerically 0 or 1 occurred
+
+myDiff.filt=calculateDiffMeth(cort.filtered_unite)
 
 
 
