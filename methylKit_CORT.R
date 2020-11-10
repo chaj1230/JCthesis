@@ -77,42 +77,21 @@ PCASamples(cort_unite, screeplot=TRUE)
 
 # tests for differential methylation using logistic regression
 ## (calculateDiffMeth takes long time)
-myDiff=calculateDiffMeth(cort_unite) # 15 warnings: glm.fit: fitted probabilities numerically 0 or 1 occurred
+cort_myDiff=calculateDiffMeth(cort_unite, mc.cores=2)
 
-myDiff.filt=calculateDiffMeth(cort.filtered_unite)
+cort_myDiff.filt=calculateDiffMeth(cort.filtered_unite, mc.cores=2)
+
+### view by chromosome
+  # for unfiltered
+diffMethPerChr(cort_myDiff,plot=TRUE,qvalue.cutoff=0.01, meth.cutoff=25)
+diffMethPerChr(cort_myDiff,plot=FALSE,qvalue.cutoff=0.01, meth.cutoff=25)
+# generate dataframe, copy to excel
+View(as.data.frame(diffMethPerChr(cort_myDiff,plot=FALSE,qvalue.cutoff=0.01, meth.cutoff=25)))
+
+  # for filtered
+diffMethPerChr(myDiff.filt,plot=TRUE,qvalue.cutoff=0.01, meth.cutoff=25)
+View(as.data.frame(diffMethPerChr(myDiff.filt,plot=FALSE,qvalue.cutoff=0.01, meth.cutoff=25)))
 
 
 
 
-########### 2020.11.02 attempting to sort cov file by chr ###########
-# # sort rr05 then read into file.list
-# rr05_sort <- rr05[with(rr05, order(V1)), ]
-# 
-# # rename rows
-# rownames(rr05_sort) <- c(1:nrow(rr05))
-# 
-# # save
-# write.table(rr05_sort, file = "~/Desktop/THESIS/nomismatch.rr05.sorted.cov", 
-#             quote = FALSE, row.names = FALSE, sep = "\t")
-# 
-# # here, went into Terminal and deleted the header column names in sorted.cov
-# 
-# # now make new file.list.sorted
-# file.list_sort=list("~/Desktop/THESIS/nomismatch.rr05.sorted.cov")
-# class(file.list_sort)
-# 
-# # this works!
-# myobj_sort=methRead(file.list_sort,
-#                     sample.id=list("rr05"),
-#                     pipeline = "bismarkCoverage",
-#                     header = FALSE,
-#                     assembly="GRCm38",treatment=1)
-
-# but -- think that coverage file does NOT need to be sorted for methylKit, so no need.
-
-################# inputing BAM files #################
-
-# my.meth.bam<-processBismarkAln(
-#   "~/Desktop/THESIS/G695_rr01_S15_val_1_bismark_bt2_pe.sorted.bam",
-#   sample.id = "rr01",
-#   assembly = "mm10")

@@ -53,8 +53,6 @@ crs.filtered_unite=unite(crs.filtered, destrand=FALSE)
 crs.filtered_unite.min=unite(crs.filtered,min.per.group=1L)
 
 
-
-
 ### sample correlation
 getCorrelation(crs_unite,plot=TRUE)
 
@@ -72,5 +70,21 @@ PCASamples(crs.filtered_unite)
 #################### Find DMRs (3.6) ####################
 
 # tests for differential methylation using logistic regression
-myDiff=calculateDiffMeth(crs_unite)
+crs_myDiff=calculateDiffMeth(crs_unite, mc.cores=2)
+
+crs_myDiff.filt=calculateDiffMeth(crs.filtered_unite, mc.cores=2) 
+
+### view by chromosome
+# for unfiltered
+diffMethPerChr(crs_myDiff,plot=TRUE,qvalue.cutoff=0.01, meth.cutoff=25)
+# generate dataframe, copy to excel
+View(as.data.frame(diffMethPerChr(crs_myDiff,plot=FALSE,qvalue.cutoff=0.01, meth.cutoff=25)))
+
+# for filtered
+diffMethPerChr(crs_myDiff.filt,plot=TRUE,qvalue.cutoff=0.01, meth.cutoff=25)
+View(as.data.frame(diffMethPerChr(crs_myDiff.filt,plot=FALSE,qvalue.cutoff=0.01, meth.cutoff=25)))
+
+
+
+
 
