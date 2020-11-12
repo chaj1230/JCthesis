@@ -1,4 +1,6 @@
 library(methylKit)
+library(genomation)
+
 
 # crs.list has rr11-rr05 CORT and rr06-rr10 VEHICLE
 crs.list=list("~/Desktop/THESIS/covs/G695_rr11_S25_val_1_bismark_bt2_pe.bismark.cov",
@@ -85,6 +87,11 @@ diffMethPerChr(crs_myDiff.filt,plot=TRUE,qvalue.cutoff=0.01, meth.cutoff=25)
 View(as.data.frame(diffMethPerChr(crs_myDiff.filt,plot=FALSE,qvalue.cutoff=0.01, meth.cutoff=25)))
 
 
+############# Annotating differentially methylated bases or regions #############
 
+# annotate differentially methylated CpGs with 
+# promoter/exon/intron using annotation bed file called gene.obj (in CORT)
+annotateWithGeneParts(as(crs_myDiff.filt,"GRanges"),gene.obj)
 
+# need: CpG island bed file
 

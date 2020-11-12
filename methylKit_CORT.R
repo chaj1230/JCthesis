@@ -93,5 +93,14 @@ diffMethPerChr(myDiff.filt,plot=TRUE,qvalue.cutoff=0.01, meth.cutoff=25)
 View(as.data.frame(diffMethPerChr(myDiff.filt,plot=FALSE,qvalue.cutoff=0.01, meth.cutoff=25)))
 
 
+############# Annotating differentially methylated bases or regions #############
+# use genomation here
 
+gene.obj=readTranscriptFeatures("~/Desktop/genes.bed.bed")
+
+# annotate differentially methylated CpGs with 
+# promoter/exon/intron using annotation data
+annotateWithGeneParts(as(cort_myDiff.filt,"GRanges"),gene.obj)
+
+# need: CpG island bed file
 
