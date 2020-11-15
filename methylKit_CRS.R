@@ -1,7 +1,6 @@
 library(methylKit)
 library(genomation)
 
-
 # crs.list has rr11-rr05 CORT and rr06-rr10 VEHICLE
 crs.list=list("~/Desktop/THESIS/covs/G695_rr11_S25_val_1_bismark_bt2_pe.bismark.cov",
               "~/Desktop/THESIS/covs/G695_rr12_S26_val_1_bismark_bt2_pe.bismark.cov",
@@ -29,10 +28,13 @@ getMethylationStats(crs[[6]],plot=TRUE,both.strands=FALSE)
 # rr20 at 100% looks more like CTRL
 getCoverageStats(crs[[1]],plot=TRUE,both.strands=FALSE)
 
+getCoverageStats(crs[[10]],plot=TRUE,both.strands=FALSE)
 
-# (2.5) filter away low coverage
-# discards bases that have coverage below 10X 
-# also discards bases with > 99.9th percentile of coverage in each sample
+
+
+# filter away low coverage
+# discard bases that have coverage below 10X 
+# discard bases with > 99.9th percentile of coverage in each sample
 crs.filtered=filterByCoverage(crs,lo.count=10,lo.perc=NULL,
                                hi.count=NULL,hi.perc=99.9)
 
@@ -69,9 +71,9 @@ PCASamples(crs_unite)
 PCASamples(crs.filtered_unite)
 
 
-#################### Find DMRs (3.6) ####################
+#################### Find DMRs ####################
 
-# tests for differential methylation using logistic regression
+# test for differential methylation using logistic regression
 crs_myDiff=calculateDiffMeth(crs_unite, mc.cores=2)
 
 crs_myDiff.filt=calculateDiffMeth(crs.filtered_unite, mc.cores=2) 
@@ -84,14 +86,29 @@ View(as.data.frame(diffMethPerChr(crs_myDiff,plot=FALSE,qvalue.cutoff=0.01, meth
 
 # for filtered
 diffMethPerChr(crs_myDiff.filt,plot=TRUE,qvalue.cutoff=0.01, meth.cutoff=25)
+diffMethPerChr(crs_myDiff.filt,plot=TRUE,qvalue.cutoff=0.01, meth.cutoff=10)
+diffMethPerChr(crs_myDiff.filt,plot=FALSE,qvalue.cutoff=0.01, meth.cutoff=10)
+
+
+
 View(as.data.frame(diffMethPerChr(crs_myDiff.filt,plot=FALSE,qvalue.cutoff=0.01, meth.cutoff=25)))
 
 
-############# Annotating differentially methylated bases or regions #############
+############# Annotating DMRs #############
 
 # annotate differentially methylated CpGs with 
 # promoter/exon/intron using annotation bed file called gene.obj (in CORT)
-annotateWithGeneParts(as(crs_myDiff.filt,"GRanges"),gene.obj)
+# with bed from UCSC genome browser
+genes=readTranscriptFeatures("~/Desktop/THESIS/GRCm38_geneAnnotation")
 
-# need: CpG island bed file
+annotateWithGeneParts(as(crs_myDiff.filt,"GRanges"),genes)
+
+# CpG island bed file from UCSC genome browser
+
+cpgs=readFeatureFlank("~/Desktop/THESIS/GRCm38_CpGIslands",
+                         feature.flank.name=c("CpGi","shores"))
+
+annotateWithFeatureFlank(as(crs_myDiff.filt,"GRanges"),
+                         cpgs$CpGi,cpgs$shores,
+                         feature.name="CpGi",flank.name="shores")
 
