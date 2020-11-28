@@ -84,5 +84,57 @@ yall$genes$Distance <- TSS$distance
 yall$genes$Width <- TSS$width
 head(yall$genes)
 
-          
-          
+# store methylation cols for ease later
+Methylation <- gl(2,1,ncol(yall), labels=c("Me","Un"))
+
+# coverage: returns each position and coverage for each sample
+Coverage <- yall$counts[, Methylation=="Me"] + yall$counts[, Methylation =="Un"]
+class(Coverage)
+head(Coverage[,1])
+
+############################################################################3
+###### VISUALISE COVERAGE ######
+# convert to df for visualisation of coverage
+cover <- as.data.frame(Coverage)
+
+# get summary statistics for each
+a <- summary(cover[,1][(cover[,1] > 0)])
+for (i in 1:ncol(cover)){
+  b <- summary(cover[,i][(cover[,i] > 0)])
+  all <- rbind(a, b)
+  a <- all
+}
+# remove the duplicate first row of rr01
+coveragestats <- a[-1,]
+rownames(coveragestats) <- Sample
+
+# histogram density plot
+# hist(cover[,i][   (cover[,i] > 0) & (cover[,i] < 50)   ])
+# hist(cover[,13][   (cover[,13] > 0) & (cover[,13] < 50)   ])
+# 
+# d <- density(cover[,13][   (cover[,13] > 0) & (cover[,13] < 100)   ])
+# d <- density(cover[,1][   (cover[,1] > 0) & (cover[,1] < 100)   ])
+pdf("coveragedensity.pdf")
+for (i in 1:ncol(cover)){
+  # d <- density(cover[,i][   (cover[,i] > 0) & (cover[,i] < 100)   ])
+  d <- density(cover[,i][   (cover[,i] > 0)   ])
+  plot(d, main = Sample[i], xlim=c(1,100))
+}
+dev.off()
+
+# cumulative
+pdf("coveragecumulative.pdf")
+for (i in 1:ncol(cover)){
+  e <- ecdf(cover[,i][   (cover[,i] > 0)   ])
+  plot(e, main = Sample[i], cex = 0, xlim=c(1, 10))
+}
+dev.off()
+
+### FILTER COVERAGE
+
+##################################
+
+# normalization
+
+
+
