@@ -49,7 +49,8 @@ files <- c(
 
 # yall is all 31 cov files, read and collate counts
 yall <- readBismark2DGE(files, sample.names=Sample)
-yall$samples$group <- factor(targets$Population) # group name = population
+# set group name = population # NOTE HERE paper is INCORRECT, need rep each 2x!!!
+yall$samples$group <- factor(rep(targets$Population, each=2)) 
 # also add "chr" to chr numbers
 row.names(yall$counts) <- paste0("chr",row.names(yall$counts))
 yall$genes$Chr <- paste0("chr",yall$genes$Chr)
@@ -131,10 +132,54 @@ for (i in 1:ncol(cover)){
 dev.off()
 
 ### FILTER COVERAGE
+# change this with filter
+y <- yall
 
 ##################################
+# set library size to be equal for each pair (Me and Un) of libraries
+# this is bc each pair is treated as a unit in analysis
 
-# normalization
+# add up for each sample lib size for methylated with unmethylated
+TotalLibSize <- y$samples$lib.size[Methylation=="Me"] +
+                y$samples$lib.size[Methylation=="Un"]
+y$samples$lib.size <- rep(TotalLibSize, each=2)
+y$samples
+
+############ MDS PLOT #############
+# M-value
+Me <- y$counts[,Methylation=="Me"] # extract # Me
+Un <- y$counts[,Methylation=="Un"] # extract # Un
+M <- log2(Me+2) - log2(Un+2) # calculate M-value, add 2 for zero frequency case
+colnames(M) <- Sample
 
 
+# toy example
+# toy <- M[1:6,1:6]
+# toycolors <- c(rep("blue",3),
+#                rep("black",3))
+# plotMDS(toy, col=toycolors)
+# plotMDS(toy, col=toycolors) + legend(
+#   "topleft",
+#   bty = "n",
+#   c("toy", "toy2"),
+#   fill = c("blue", "black")
+# )
 
+# generate MDS plot
+# set colors for visualisation
+colors <- c(rep("blue",5),
+            rep("black",5),
+            rep("grey",5),
+            rep("red",6),
+            rep("yellow",5),
+            rep("orange", 5))
+# plot with color legend
+plotMDS(M, col=colors) + legend(
+    "topleft",
+    bty = "n",
+    c("CORT", "VEHICLE", "CONTROL", "CRS", "CRS_2", "CRSc"),
+    fill = c("green", "black", "grey", "red","blue","purple")
+  )
+  
+
+  
