@@ -5,10 +5,10 @@ library(edgeR)
 library(AnnotationDbi)
 library(dplyr)
 library(ggplot2)
-# genome wide annotation for mouse
+# genome wide annotation for mouse mm10
 library(org.Mm.eg.db) 
-library(tidyverse) #change from chr1 to 1; vice versa etc
-library(qqman) # manhattan
+# change from chr1 to 1; vice versa etc
+library(tidyverse)
 
 # read in txt file of sample names
 targets19 <- read.delim("targets19_noRR20.txt", row.names = "Sample", stringsAsFactors=FALSE)
@@ -43,7 +43,7 @@ files19 <- c(
 # yall is all 19 cov files, read and collate counts
 yall19 <- readBismark2DGE(files19, sample.names=Sample19)
 
-# set group name = population # need rep each 2x for normalization
+# set group name = population; rep each 2x for normalization
 yall19$samples$group <- factor(rep(targets19$Population, each=2)) 
 # also add "chr" to chr numbers
 row.names(yall19$counts) <- paste0("chr",row.names(yall19$counts))
@@ -69,9 +69,9 @@ yall19 <- yall19[o19,]
 
 ################################################################
 
-# gene annotation
-TSS19 <- nearestTSS(yall19$genes$Chr, yall19$genes$Locus, species="Mm") # mouse
-# this function is using org.Mm.eg.db
+# gene annotation: cytosine to nearest gene TSS
+TSS19 <- nearestTSS(yall19$genes$Chr, yall19$genes$Locus, species="Mm")
+# this function is using org.Mm.eg.db mm10
 # add gene annotation to yall$genes
 yall19$genes$EntrezID <- TSS19$gene_id
 yall19$genes$Symbol <- TSS19$symbol
@@ -97,9 +97,8 @@ HasBoth19 <- rowSums(Me19) > 0 & rowSums(Un19) > 0
 # apply both filters
 y5.19 <- yall19[keep5.19 & HasBoth19,, keep.lib.sizes=FALSE]
 
-# all the genes captured now with this coverage threshold
-length(unique(y5.19$genes$Symbol)) # 17778 unique genes
-nrow(y5.19$genes) # 417,036 loci
+#  now with this coverage threshold
+nrow(y5.19$genes) # --> TOTAL 417,036 loci
 
 # set library size to be equal for each pair (Me and Un) of libraries
 # this is bc each pair is treated as a unit in analysis
@@ -119,20 +118,14 @@ M19 <- log2(Me19+2) - log2(Un19+2) # calculate M-value, add 2 for zero frequency
 colnames(M19) <- Sample19
 
 # generate MDS plot
-# set colors for visualisation
-colors19 <- c(rep("blue",4),
-            rep("black",5),
-            rep("grey",5),
-            rep("red",5))
+# set colors for visualization
+colors19 <- c(rep("blue",4),rep("black",5),rep("grey",5),rep("red",5))
 
 # plot with color legend
 pdf("2021.01.29_MDS_allCpGs_19samples.pdf")
 plotMDS(M19, col=colors19, gene.selection="pairwise", main="All CpG sites") + legend(
-  "topright",
-  bty = "n",
-  c("CORT", "VEHICLE", "CONTROL", "CRS"),
-  fill = c("blue", "black", "grey", "red")
-)
+  "topright", bty = "n", c("CORT", "VEHICLE", "CONTROL", "CRS"),
+  fill = c("blue", "black", "grey", "red"))
 dev.off()
 
 ################################################
@@ -188,23 +181,19 @@ write.csv(CRS_hyper_all_df, "~/Desktop/jCRS_109715hyper.csv")
 topTags(lrt.CORT19) # only 3
 topTags(lrt.CORT19, n=3)
 
-# show number of differentially methylated CpG sites at FDR of 5%
-summary(decideTests(lrt.CORT19, method = "bonferroni")) # only 3 -- all hypo
+# show number of differentially methylated CpG sites at Bonferroni p < 0.05
+summary(decideTests(lrt.CORT19, method = "bonferroni")) # 3 -- all hypo
 
 # for CRS
-summary(decideTests(lrt.CRS19, method = "bonferroni")) # 790 down; 917 up, tot 1707
+summary(decideTests(lrt.CRS19, method = "bonferroni")) # 790 hypo; 917 hyper, tot 1707
 # take just the 1707 diff methylated
 DMC_CRS19 <- topTags(lrt.CRS19, n=2000)[1:1707,]
 # separate for hypo & hypermethylated
 hypo_CRS19 <- DMC_CRS19[DMC_CRS19$table$logFC < 0, ] # hypomethyl nrow(hypo_CRS19) # 790
 hyper_CRS19 <- DMC_CRS19[DMC_CRS19$table$logFC > 0, ] # hypermethyl nrow(hyper_CRS19) # 917
 
-hypo_CRS19df <- as.data.frame(hypo_CRS19)
-hyper_CRS19df <- as.data.frame(hyper_CRS19)
-
-# visualise MD plots
-tiff("2021.02.08.CORT19_logFC.tiff", 
-     width=550, height=500)
+# visualize MD plots
+tiff("2021.02.08.CORT19_logFC.tiff", width=550, height=500)
 plotMD(lrt.CORT19, main="CORT vs VEHICLE
        methylation across all CpG sites", ylim=c(-10,10))
 dev.off()
@@ -215,10 +204,10 @@ plotMD(lrt.CRS19, main="CRS vs CONTROL
        methylation across all CpG sites")
 dev.off()
 
-
 #####################################
 # manhattan plot
 # need format: bp, chr, p, gene (identifier)
+
 # load packages
 library(dplyr)
 library(qqman)
@@ -229,9 +218,7 @@ chr <- str_remove(chr, "chr") # chr1 --> 1
 bp <- lrt.CRS19$genes$Locus
 p <- lrt.CRS19$table$PValue
 gene <- lrt.CRS19$genes$Symbol
-# length(chr) #417036
-# length(bp)
-# length(p) length of all is 417036
+# length(chr) # check 417036 yes
 xcrs19 <- data.frame(chr,bp,p,gene)
 writexl::write_xlsx(xcrs19,"/Volumes/jaeyoonc/_THESIS/JCthesis/ManhattanCRS19.xlsx")
 
@@ -240,19 +227,14 @@ xCRS <- read.table("/Volumes/jaeyoonc/_THESIS/JCthesis/ManhattanCRS19.txt", head
 colnames(xCRS) <- c("CHR", "BP", "P", "SNP")
 
 # generate manhattan plot
-# not annotating genes
 pdf("/Volumes/jaeyoonc/_THESIS/ManhattanCRS_allCpGs.pdf",
     width=6.50,
     height=3.10)
 manhattan(xCRS, chr = "CHR", bp = "BP", p = "P", snp = "SNP",
           # set threshold as 9.05e-05 with multiple hypothesis test correction bonferroni
-          # this corresponds to FDR of ~0.05
           suggestiveline = -log10(9.05e-05), 
           genomewideline= -log10(1e-07),
-          ## (for readability, annotate gene names for the)
-          ## (top 30 most significantly DMCs, corresponding p threshold = 1.55e-07)
-          # annotatePval= 1e-07, # 9.039034e-05 is the p-value of the 735th
-          # for readability, annotate the top for each chr only
+          # colors
           col = c("#d487e5", "#8239b5"),
           # annotateTop=TRUE,
           main="CRS vs CONTROL all CpG sites",
@@ -265,13 +247,11 @@ chrcort <- str_remove(chrcort, "chr") # chr1 --> 1
 bpcort <- lrt.CORT19$genes$Locus
 pcort <- lrt.CORT19$table$PValue
 genecort <- lrt.CORT19$genes$Symbol
-# length(chrcort) # also 417036
-# length(bp)
-# length(p) length of all is 406421
+# length(chrcort) # also 417036 check yes
 xcort19 <- data.frame(chrcort,bpcort,pcort,genecort)
 writexl::write_xlsx(xcort19,"/Volumes/jaeyoonc/_THESIS/JCthesis/ManhattanCORT19.xlsx")
 
-### CORT - read in M values for all 400k cytosines
+### CORT - read in M values
 xCORT <- read.table("/Volumes/jaeyoonc/_THESIS/JCthesis/ManhattanCORT19.txt", header = TRUE)
 colnames(xCORT) <- c("CHR", "BP", "P", "SNP")
 
@@ -280,10 +260,9 @@ pdf("/Volumes/jaeyoonc/_THESIS/ManhattanCORT_allCpGs.pdf",
     width=6.50,
     height=3.10)
 manhattan(xCORT, chr = "CHR", bp = "BP", p = "P", snp = "SNP",
-          # set threshold as 5e-07 with multiple hypothesis test correction bonferroni
-          # this corresponds to FDR of ~0.05
-          suggestiveline = -log10(5e-07), genomewideline=-log10(1e-07),
-          # annotatePval=4e-07,
+          # set threshold as 5e-07 with bonferroni
+          suggestiveline = -log10(5e-07), 
+          genomewideline=-log10(1e-07),
           col = c("#7AD56A", "#3e8c3d"),
           main="CORT vs VEHICLE all CpG sites",
           cex=0.7) # change size of font
@@ -294,22 +273,65 @@ pdf("2021.02.13_CORT_Q-Q_allCpGs.pdf")
 qq(xCORT$P, main="CORT vs VEHICLE Q-Q plot")
 dev.off()
 
-
 #####################################
 # examine patterns of differential methylation
 
 # by chromosome
 ChrIndices <- list()
 for (i in ChrNames19) ChrIndices[[i]] <- which(ydisp19$genes$Chr==i)
+# use fry rotational gene test
 bychrCORT19 <- fry(ydisp19, index=ChrIndices, design=design19, contrast=contr.CORT19)
 bychrCRS19 <- fry(ydisp19, index=ChrIndices, design=design19, contrast=contr.CRS19)
 
-# global methylation patterns around TSS
+
+# annotate by gene parts
+# read in mm10 RefSeq BED file
+gene.bed=readTranscriptFeatures(
+  "/Volumes/jaeyoonc/_THESIS/mm10/ncbiRefSeq.mm10.bed.txt",
+  # remove random or unassembled chr
+  remove.unusual=TRUE,
+  # set promter boundaries as before for PCE, 2kb upstream and 1kb downstream of TSS
+  up.flank=2000,
+  down.flank=1000)
+
+# annotate CRS differential methylation promoter
+CRScDiffGRange <- as(lrt.CRS19,"GRanges")
+diffAnn=annotateWithGeneParts(CRScDiffGRange, gene.bed)
+head(getAssociationWithTSS(diffAnn))
+# visualize pie chart
+pdf("GeneAnnotationPercentage.pdf")
+plotTargetAnnotation(diffAnn,precedence=TRUE,
+                     col=c("#EE6A59","#3A3F58","#F9AC67", "#ECE6CD"),
+                     main="Differential methylation annotation",
+                     cex.legend=1,
+                     cex.lab=5, # make fonts bigger
+                     cex.sub=5,
+                     cex.axis=5)
+dev.off()
+
+# CpG island bed file from UCSC genome browser
+cpg.bed=readFeatureFlank(
+  "/Volumes/jaeyoonc/_THESIS/mm10/mm10.CpGIslands.bed.txt",
+  remove.unusual=TRUE,
+  feature.flank.name=c("CpGi","shores"))
+# annotate CRS differential methylation CpGi
+diffCpGann=annotateWithFeatureFlank(as(lrt.CRS19,"GRanges"),
+                                    cpg.bed$CpGi,cpg.bed$shores,
+                                    feature.name="CpGi",flank.name="shores")
+# visualize pie chart
+pdf("CpGPercentage.pdf")
+plotTargetAnnotation(diffCpGann,
+                     col=c("#072F5F","#1261A0", "#95C8D8"),
+                     main="Differential methylation annotation")
+dev.off()
+
+
+# global methylation patterns around TSS - first visualize for each treatment
 # set 20kb as distance around TSS
 i19 <- abs(fit19$genes$Distance) < 20000
 # CRS
 loCRS19 <- lowess(fit19$genes$Distance[i19], fit19$coefficients[i19, "CRS"], f=0.3) # f is smoothness, default 2/3
-# visualise
+# visualize
 tiff("CRS19_DistTSSMethylation.tiff", 
      width=550, height=500)
   plot(loCRS19, type ="l", xlab="Distance to TSS", 
@@ -323,7 +345,7 @@ dev.off()
 
 # CORT
 loCORT19 <- lowess(fit19$genes$Distance[i19], fit19$coefficients[i19, "CORT"], f=0.3) # f is smoothness, default 2/3
-# visualise
+# visualize
 tiff("CORT19_DistTSSMethylation.tiff", 
      width=550, height=500)
 plot(loCORT19, type ="l", 
@@ -343,7 +365,7 @@ dev.off()
 
 # CONTROL
 loCTRL19 <- lowess(fit19$genes$Distance[i19], fit19$coefficients[i19, "CONTROL"], f=0.3) # f is smoothness, default 2/3
-# visualise
+# visualize
 tiff("2021.02.08.CONTROL19_DistTSSMethylation.tiff", 
      width=550, height=500)
 plot(loCTRL19, type ="l", xlab="Distance to TSS", 
@@ -357,7 +379,7 @@ dev.off()
 
 # VEHICLE
 loVEH19 <- lowess(fit19$genes$Distance[i19], fit19$coefficients[i19, "VEHICLE"], f=0.3) # f is smoothness, default 2/3
-# visualise
+# visualize
 tiff("2021.02.08.VEHICLE19_DistTSSMethylation.tiff", 
      width=550, height=500)
 plot(loVEH19, type ="l", xlab="Distance to TSS", 
@@ -369,11 +391,11 @@ abline(h=0, lty=2)
 abline(v=0, lty=2)
 dev.off()
 
-### methylation changes around TSS position!
-# CORT
-i.CORTvsVEH19 <- abs(lrt.CORT19$genes$Distance) < 80000
+### methylation CHANGES around TSS position! 22kb each way
+# CORT vs VEH
+i.CORTvsVEH19 <- abs(lrt.CORT19$genes$Distance) < 22000
 lo.CORTvsVEH19 <- lowess(lrt.CORT19$genes$Distance[i19], lrt.CORT19$table$logFC[i19], f=0.3) # f is smoothness, default 2/3
-
+# visualize output
 pdf("CORTvsVEH_TSSglobalmethyl.pdf")
 plot(lo.CORTvsVEH19, type ="l", 
      xlab="Distance to TSS", 
@@ -391,9 +413,9 @@ abline(v=0, lty=2)
 dev.off()
 
 # CRS
-i.CRSvsCTRL19 <- abs(lrt.CRS19$genes$Distance) < 80000
+i.CRSvsCTRL19 <- abs(lrt.CRS19$genes$Distance) < 22000
 lo.CRSvsCTRL19 <- lowess(lrt.CRS19$genes$Distance[i.CRSvsCTRL19], lrt.CRS19$table$logFC[i.CRSvsCTRL19], f=0.3) # f is smoothness, default 2/3
-
+# visualize output
 pdf("CRSvsCTRL_TSSglobalmethyl.pdf")
 plot(lo.CRSvsCTRL19, type ="l", 
      xlab="Distance to TSS", 
