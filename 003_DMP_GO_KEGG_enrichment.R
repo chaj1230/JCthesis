@@ -1,4 +1,6 @@
 setwd("/Volumes/jaeyoonc/_THESIS/JCthesis")
+# note: need source f(x) of clusterProfiler from their GitHub for 
+# dotplot font formatting changes
 
 # load required packages
 library(clusterProfiler)
@@ -22,6 +24,26 @@ random1970 <- sample(allgenes, 1970, replace=FALSE)
 random119 <- sample(allgenes, 119, replace=FALSE)
 length(random1970)
 
+#####################
+
+# write a function to get GO term enrichment per category
+GOenrich <- function(ENTREZIDs, category){
+  # run enrichGO with parameters
+  ego <- enrichGO(gene          = ENTREZIDs,
+                  # universe is all mm10 genes for enrichment bkground
+                  OrgDb         = org.Mm.eg.db,
+                  keyType = "ENTREZID",
+                  ont           = category,
+                  # bonferroni p < 0.05 and q < 0.05
+                  pAdjustMethod = "bonferroni",
+                  pvalueCutoff  = 0.05,
+                  qvalueCutoff  = 0.05,
+                  readable      = TRUE)
+  return(ego)
+}
+
+
+
 ######################### HYPO ############################
 
 ####### GO cellular component
@@ -31,12 +53,9 @@ CC.df <- head(egoCC, n=100)
 write.csv(CC.df, "/Volumes/jaeyoonc/_THESIS/JCthesis/cellularComponent.csv")
 
 # visualize dotplot
-pdf("CC.pdf",
-    height=5.5,
-    width=6)
+pdf("CC.pdf", height=5.5,width=6)
 dotplot(egoCC, 
         title = "GO Cellular Component",
-        showCategory = 100,
         label_format = 30,
         font.size=12)
 dev.off()
@@ -47,15 +66,9 @@ randomCC <- GOenrich(random1970, "CC")
 # p adjusted after bonferroni: 0.0355
 # generation: 59/1766
 
+
 ####### GO biological process
-egoBP <- enrichGO(gene          = genes1970,
-                  OrgDb         = org.Mm.eg.db,
-                keyType = "ENTREZID",
-                ont           = "BP",
-                pAdjustMethod = "bonferroni",
-                pvalueCutoff  = 0.05,
-                qvalueCutoff  = 0.05,
-                readable      = TRUE)
+egoBP <- GOenrich(genes1970, "BP") # 44 GO terms
 
 # simplify
 # reduce redundancy; GO terms with semantic similarity higher than 0.7 are redundant
@@ -65,7 +78,7 @@ egoBPsimp <- clusterProfiler::simplify(
   by="p.adjust", 
   select_fun=min)
 
-nrow(egoBPsimp)
+nrow(egoBPsimp) # 23
 BP.df.simp <- head(egoBPsimp, n=100)
 # cutoff 0.7 gives 23 GO terms (from initially 44)
 
@@ -76,7 +89,6 @@ write.csv(BP.df.simp, "/Volumes/jaeyoonc/_THESIS/JCthesis/biologicalProcessSIMP.
 pdf("BP-all.pdf")
 dotplot(egoBP, 
         title = "GO Biological Process",
-        showCategory = 100,
         label_format = 30,
         font.size=12)
 dev.off()
@@ -87,22 +99,13 @@ pdf("BP-simp.pdf",
     width=6)
 dotplot(egoBPsimp, 
         title = "GO Biological Process",
-        showCategory = 44,
         label_format = 30,
         font.size=12)
 dev.off()
 
 # BP random
-randomBP <- enrichGO(gene          = random1970,
-                  # universe      = allgenes, # THINK AB THIS: with allgenes, 0 results
-                  OrgDb         = org.Mm.eg.db,
-                  keyType = "ENTREZID",
-                  ont           = "BP",
-                  pAdjustMethod = "bonferroni",
-                  pvalueCutoff  = 0.05,
-                  qvalueCutoff  = 0.05,
-                  readable      = TRUE)
-randomBP # 2 things but they're the same essentially
+randomBP <- GOenrich(random1970, "BP")
+randomBP # 2 terms but they're the same essentially:
 # "regulation of chromosome organization" 
 # "positive regulation of chromosome organization"
 # simplify:
@@ -114,16 +117,10 @@ randomBPsimp <- clusterProfiler::simplify(
 randomBPsimp # "regulation of chromosome organization"
 # adjusted p-val=0.0222
 
+
 ####### GO molecular function
-egoMF <- enrichGO(gene          = genes1970,
-                  OrgDb         = org.Mm.eg.db,
-                  keyType = "ENTREZID",
-                  ont           = "MF",
-                  pAdjustMethod = "bonferroni",
-                  pvalueCutoff  = 0.05,
-                  qvalueCutoff  = 0.05,
-                  readable      = TRUE)
-head(egoMF, 50) # 5
+egoMF <- GOenrich(genes1970, "MF")
+head(egoMF, 50) # 5 terms
 egoMF 
 
 # visualize
@@ -139,14 +136,7 @@ MF.df <- head(egoMF, n=100)
 write.csv(MF.df, "/Volumes/jaeyoonc/_THESIS/JCthesis/molecularFunction.csv")
 
 # random MF
-randomMF <- enrichGO(gene          = random1970,
-                  OrgDb         = org.Mm.eg.db,
-                  keyType = "ENTREZID",
-                  ont           = "MF",
-                  pAdjustMethod = "bonferroni",
-                  pvalueCutoff  = 0.05,
-                  qvalueCutoff  = 0.05,
-                  readable      = TRUE)
+randomMF <- GOenrich(random1970, "MF")
 randomMF # nothing
 
 ##### KEGG terms
@@ -157,7 +147,16 @@ kegg <- enrichKEGG(gene       = genes1970,
                    qvalueCutoff  = 0.05)
 kegg.df <- head(kegg, n=100)
 
-# for random
+# export
+write.csv(kegg.df, "/Volumes/jaeyoonc/_THESIS/JCthesis/KEGG.csv")
+nrow(kegg.df) # 19 KEGG terms
+# visualize dotplot
+pdf("kegg.pdf",height=9,width=6)
+dotplot(kegg, showCategory = 100, title = "KEGG Pathways",
+        label_format = 26, font.size = 12)
+dev.off()
+
+# for random KEGG
 randokegg <- enrichKEGG(gene       = random1970,
                         organism     = 'mmu',
                         pAdjustMethod = "bonferroni",
@@ -167,35 +166,7 @@ randokegg <- enrichKEGG(gene       = random1970,
 # "Thyroid hormone signaling pathway" 
 # "N-Glycan biosynthesis"
 
-# export
-write.csv(kegg.df, "/Volumes/jaeyoonc/_THESIS/JCthesis/KEGG.csv")
-
-nrow(kegg.df) # 19 KEGG terms
-View(kegg.df)
-
-pdf("kegg.pdf",
-    height=9,
-    width=6)
-dotplot(kegg, showCategory = 100, title = "KEGG Pathways",
-        label_format = 26, font.size = 12)
-dev.off()
-
 ######################### HYPER ############################
-
-# write a function to get GO term enrichment per category
-GOenrich <- function(ENTREZIDs, category){
-  # run enrichGO with parameters
-  ego <- enrichGO(gene          = ENTREZIDs,
-                  # universe      = allgenes,
-                  OrgDb         = org.Mm.eg.db,
-                  keyType = "ENTREZID",
-                  ont           = category,
-                  pAdjustMethod = "bonferroni",
-                  pvalueCutoff  = 0.05,
-                  qvalueCutoff  = 0.05,
-                  readable      = TRUE)
-  return(ego)
-}
 
 # GO terms
 hyperCC <- GOenrich(hyper119, "CC") # 0
