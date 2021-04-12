@@ -48,7 +48,7 @@ yall19$samples$group <- factor(rep(targets19$Population, each=2))
 # also add "chr" to chr numbers
 row.names(yall19$counts) <- paste0("chr",row.names(yall19$counts))
 yall19$genes$Chr <- paste0("chr",yall19$genes$Chr)
-nrow(yall19) # 10027860 # vs nrow(yall) (with rr20) was # 10152084
+nrow(yall19) # 10027860
 
 # filter MT and Y chr
 keep19 <- rep(TRUE, nrow(yall19))
@@ -71,7 +71,7 @@ yall19 <- yall19[o19,]
 
 # gene annotation
 TSS19 <- nearestTSS(yall19$genes$Chr, yall19$genes$Locus, species="Mm") # mouse
-# this function is using org.Mm.eg.db
+# this function is using org.Mm.eg.db mm10
 # add gene annotation to yall$genes
 yall19$genes$EntrezID <- TSS19$gene_id
 yall19$genes$Symbol <- TSS19$symbol
@@ -86,22 +86,19 @@ head(yall19$genes)
 
 # PCE as 2kb upstream to 1kb downstream of TSS
 InPCE19 <- yall19$genes$Distance >= -1000 & yall19$genes$Distance <= 2000
-sum(InPCE19) # left with 2,283,385 (vs 2,294,885 with rr20) CpG sites meeting threshold of promoter
-# 2283385/10,027,860*100 # thats ~22.8%
 # filter
 yIP19 <- yall19[InPCE19,,keep.lib.sizes=FALSE]
-# how many genes?
-length(unique(yall19$genes$Symbol)) # 25889 
+# how many genes? --> more filtering to come
 length(unique(yIP19$genes$Symbol)) # 24632 
 
 # now compute total counts for *each PCE*
-# each row corresponds to not a CpG site but one row per gene!
+# each row corresponds to not a CpG site but one row per gene (PCE)!
 ypr19 <- rowsum(yIP19, yIP19$genes$Symbol, reorder=FALSE)
 
 ### filter
 # save Me and Un for ease of access (odd columns are Me, even Un)
 Methyl.pr19 <- gl(2,1,ncol(ypr19), labels=c("Me","Un"))
-# filter out CpGs that are never or always methylated bc no info about differential methyl
+# filter out never or always methylated bc no info about differential methyl
 Me.pr19 <- ypr19$counts[,Methyl.pr19=="Me"] # extract # Me
 Un.pr19 <- ypr19$counts[,Methyl.pr19=="Un"] # extract # Un
 HasBoth.pr19 <- rowSums(Me.pr19) > 0 & rowSums(Un.pr19) > 0
@@ -110,16 +107,14 @@ table(HasBoth.pr19) # FALSE (always methyl or always unmethyl) = 2029; TRUE = 22
 # COVERAGE: set threshold of 5 occurences in all 19 samples
 # coverage: returns each position and coverage for each sample
 Coverage.pr19 <- ypr19$counts[, Methyl.pr19=="Me"] + ypr19$counts[, Methyl.pr19 =="Un"]
-
-# ncol(Coverage.pr) is 20
 keep5.pr19 <- rowSums(Coverage.pr19 >= 5) == 19
 table(keep5.pr19) # TRUE 17163 genes
 
 # apply both filters
 ypr5.19 <- ypr19[keep5.pr19 & HasBoth.pr19,, keep.lib.sizes=FALSE]
 
-# total number of genes
-length(unique(ypr5.19$genes$EntrezID)) # 17155
+# total number of genes = 17155
+length(unique(ypr5.19$genes$EntrezID)) # TOTAL 17155
 nrow(ypr5.19$counts) # confirm 17155
 
 # set library size to be equal for each pair (Me and Un) of libraries
@@ -140,8 +135,6 @@ designSL19 <- model.matrix(~0+Population, data=targets19)
 colnames(designSL19) <- c("CONTROL", "CORT", "CRS", "VEHICLE")
 design19 <- modelMatrixMeth(designSL19)
 #  each DNA sample generates two counts, a count of methylated reads and a count of unmethylated reads, for each genomic locus for each sample. The function converts sample-level information about the treatment conditions to make an appropriate design matrix with two rows for each sample. Counts are assumed to be ordered as methylated and then unmethylated by sample.
-# nrow(design) # 38
-# ncol(design) # 23: for 19 samples + 4 treatments
 
 # dispersion
 yprdisp19 <- estimateDisp(ypr5.19, design=design19, trend="none")
@@ -152,6 +145,7 @@ summary(yprdisp19$prior.df)
 plotBCV(yprdisp, main = "Dispersion for PCE CpGs")
 
 ################ differential methylation analysis ################ 
+
 fitpr19 <- glmFit(yprdisp19, design19)
 
 # # comparison CORT
@@ -168,8 +162,8 @@ lrt.CRSpr19 <- glmLRT(fitpr19,contrast=contr.CRS19)
 topTags(lrt.CORTpr19)
 topTags(lrt.CRSpr19)
 
-# show number of differentially methylated CpG sites at FDR of 5%
-summary(decideTests(lrt.CORTpr19, method = "bonferroni")) # 0 NONE! # also 0 with bonferroni # 0 sig, 17155 not sig
+# show number of differentially methylated CpG sites at bonferroni 5%
+summary(decideTests(lrt.CORTpr19, method = "bonferroni")) # 0 NONE!
 
 # for CRS
 summary(decideTests(lrt.CRSpr19, method = "bonferroni")) # 1970 down, 119 up
@@ -191,23 +185,22 @@ hypo_CRSpr19_ENTREZID <- unique(hypo_CRSpr19$table$EntrezID) # length(hypo_CRSpr
 hyper_CRSpr19_gene <- unique(rownames(hyper_CRSpr19)) # 119
 hyper_CRSpr19_ENTREZID <- unique(hyper_CRSpr19$table$EntrezID) # length(hyper_CRSpr19_ENTREZID) # 119
 
-# save gene names as files
+# save gene names as files both as gene symbol and entrezID --> use for clusterProfiler
 write_lines(hypo_CRSpr19_gene, "/Volumes/jaeyoonc/_THESIS/JCthesis/1970hypoCRS19genesPROMOTER19.txt")
 write_lines(hypo_CRSpr19_ENTREZID, "/Volumes/jaeyoonc/_THESIS/JCthesis/1970hypoCRS19genesENTREZID.txt")
-
 write_lines(hyper_CRSpr19_gene, "/Volumes/jaeyoonc/_THESIS/JCthesis/119hyperCRS19genesPROMOTER19.txt")
 write_lines(hyper_CRSpr19_ENTREZID, "/Volumes/jaeyoonc/_THESIS/JCthesis/119hyperCRS19genesENTREZID.txt")
 
 # save the original 17155 genes
 allgenes <- rownames(ypr5.19$genes)
 allgenesENTREZID <- unique(ypr5.19$genes$EntrezID) # length(allgenesENTREZID) 17155
-
 length(allgenes) # 17155
 write_lines(allgenes, "/Volumes/jaeyoonc/_THESIS/JCthesis/all17155genes_noRR20.txt")
 write_lines(allgenesENTREZID, "/Volumes/jaeyoonc/_THESIS/JCthesis/all17155genes19_ENTREZID.txt")
 
 
 # visualise MD plots
+# CORT
 pdf("CORTpce-logFC.pdf")
 plotMD(lrt.CORTpr19, 
        main="CORT vs VEHICLE methylation in PCEs", 
@@ -219,6 +212,7 @@ plotMD(lrt.CORTpr19,
        cex.main=1.7)
 dev.off()
 
+# CRS
 pdf("CRSpce-logFC.pdf")
 plotMD(lrt.CRSpr19, 
        main="CRS vs CONTROL methylation in PCEs",
@@ -229,17 +223,17 @@ plotMD(lrt.CRSpr19,
        cex.main=1.7)
 dev.off()
 
-
 #####################################
 
 # by chromosome
 ChrIndices <- list()
 for (i in ChrNames19) ChrIndices[[i]] <- which(yprdisp19$genes$Chr==i)
+# use fry rotational gene test
 bychrCORTpr19 <- fry(yprdisp19, index=ChrIndices, design=design19, contrast=contr.CORT19)
 bychrCRSpr19 <- fry(yprdisp19, index=ChrIndices, design=design19, contrast=contr.CRS19)
 
 ##################################
-### hierarchical clustering
+# hierarchical clustering
 
 # load packages
 library(tidyverse)  # data manipulation
@@ -278,9 +272,8 @@ ac <- function(x) {
 }
 map_dbl(m, ac) # ward is best
 
-# Hierarchical clustering using ward
+# hierarchical clustering using ward
 hc1 <- hclust(d, method = "ward" )
-
 plot(hc1, cex = 0.6, hang= -1,
      main ="Hierarchical clustering by M-value",
      cex.main=0.9)
